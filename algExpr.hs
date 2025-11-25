@@ -96,8 +96,8 @@ simplify (BinOp op e1 e2) = simplifyBin op (simplify e1) (simplify e2) where
     |op == "-" && isZero e2 = e1
     |op == "-" && isZero e1 = simplify $ UnOp "negate" e2
     |op == "*" && (isZero e1 || isZero e2)  = Const 0
-    |op == "*" && isOne e1 = e1
-    |op == "*" && isOne e2 = e2
+    |op == "*" && isOne e1 = e2
+    |op == "*" && isOne e2 = e1
     |op == "/" && isOne e2 = e1
     |op == "/" && e1 == e2 = Const 1
     |op == "-" && e1 == e2 = Const 0
@@ -109,7 +109,8 @@ simplify (BinOp op e1 e2) = simplifyBin op (simplify e1) (simplify e2) where
       isZero _ = False
       isOne (Const 1) = True
       isOne _ = False
-simplify exp = exp -- Переменные и константы
+simplify (Const x) = Const x -- Константы
+simplify (Var name) = Var name -- Переменные
 
 -- ghci> showExpr expr
 -- "((x * 5.00) + sin((3.14 / 2.00)))"
@@ -125,11 +126,11 @@ differentiate var = h where
   h (UnOp op exp) = simplify $ BinOp "*" (differentiate var exp) (difHForUnOp op) where
     difHForUnOp :: String -> Expr
     difHForUnOp op
-      |op == "sin" = simplify $ BinOp "*" (differentiate var exp) (UnOp "cos" exp)                 -- sin' = cos
-      |op == "cos" = simplify $ BinOp "*" (differentiate var exp) (UnOp "negate" (UnOp "sin" exp)) -- cos' = -sin
-      |op == "sqrt" = simplify $ BinOp "*" (differentiate var exp) (BinOp "/" (Const 1) (BinOp "*" (Const 2) (UnOp "sqrt" exp))) 
-      |op == "log" = simplify $ BinOp "*" (differentiate var exp) (BinOp "/" (Const 1) exp) 
-      |otherwise = UnOp op exp                                                                     -- negate, id
+      |op == "sin" = UnOp "cos" exp                 -- sin' = cos
+      |op == "cos" = UnOp "negate" (UnOp "sin" exp) -- cos' = -sin
+      |op == "sqrt" = BinOp "/" (Const 1) (BinOp "*" (Const 2) (UnOp "sqrt" exp)) 
+      |op == "log" = BinOp "/" (Const 1) exp 
+      |otherwise = UnOp op exp                      -- negate, id
   h (BinOp op exp1 exp2)
     |op == "+" || op == "-" = simplify $ BinOp op (differentiate var exp1) (differentiate var exp2)
     |op == "*" = simplify $ BinOp "+" (BinOp op (differentiate var exp1) exp2) (BinOp op (differentiate var exp2) exp1)
