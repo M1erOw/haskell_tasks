@@ -20,7 +20,8 @@ stdBinOps = Map.fromList
     ("*", (*)),
     ("/", (/)),
     ("max", max),
-    ("min", min)
+    ("min", min),
+    ("pow", (**))
   ]
 
 data Expr
@@ -97,7 +98,11 @@ simplify (BinOp op e1 e2) = simplifyBin op (simplify e1) (simplify e2) where
     |op == "*" && (isZero e1 || isZero e2)  = Const 0
     |op == "*" && isOne e1 = e1
     |op == "*" && isOne e2 = e2
+    |op == "/" && isOne e2 = e1
+    |op == "/" && e1 == e2 = Const 1
     |op == "-" && e1 == e2 = Const 0
+    |op == "pow" && isZero e2 = Const 1
+    |op == "pow" && isOne e1 = Const 1
     |otherwise = BinOp op e1 e2
     where
       isZero (Const 0) = True
@@ -110,3 +115,32 @@ simplify exp = exp -- Переменные и константы
 -- "((x * 5.00) + sin((3.14 / 2.00)))"
 -- ghci> showExpr $ simplify expr
 -- "((x * 5.00) + 1.00)"
+
+differentiate:: String -> Expr -> Expr
+differentiate var = h where
+  h (Const x) = Const 0
+  h (Var name)
+    |name == var = Const 1
+    |otherwise = Const 0
+  h (UnOp op exp) = simplify $ BinOp "*" (differentiate var exp) (difHForUnOp op) where
+    difHForUnOp :: String -> Expr
+    difHForUnOp op
+      |op == "sin" = simplify $ BinOp "*" (differentiate var exp) (UnOp "cos" exp)                 -- sin' = cos
+      |op == "cos" = simplify $ BinOp "*" (differentiate var exp) (UnOp "negate" (UnOp "sin" exp)) -- cos' = -sin
+      |op == "sqrt" = simplify $ BinOp "*" (differentiate var exp) (BinOp "/" (Const 1) (BinOp "*" (Const 2) (UnOp "sqrt" exp))) 
+      |op == "log" = simplify $ BinOp "*" (differentiate var exp) (BinOp "/" (Const 1) exp) 
+      |otherwise = UnOp op exp                                                                     -- negate, id
+  h (BinOp op exp1 exp2)
+    |op == "+" || op == "-" = simplify $ BinOp op (differentiate var exp1) (differentiate var exp2)
+    |op == "*" = simplify $ BinOp "+" (BinOp op (differentiate var exp1) exp2) (BinOp op (differentiate var exp2) exp1)
+    |op == "/" = simplify $ BinOp "/" (BinOp "-" (BinOp op (differentiate var exp1) exp2) (BinOp op (differentiate var exp2) exp1)) 
+                                      (BinOp "pow" exp2 (Const 2))
+    |op == "pow" = simplify $ BinOp "*" (BinOp op exp1 exp2) (BinOp "+" (BinOp "*" (BinOp "/" exp2 exp1) (differentiate var exp1)) 
+                                                                        (BinOp "*" (differentiate var exp2) (UnOp "log" exp1)))  
+    |otherwise = BinOp op exp1 exp2 -- на случаи max min
+
+-- ghci> showExpr expr
+-- "((x * 5.00) + sin((3.14 / 2.00)))"
+-- ghci> showExpr $ differentiate "x" expr
+-- "5.00"
+
