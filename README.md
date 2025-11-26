@@ -5,3 +5,5 @@ Vitaly Kouhanau Group 12
 [tree.hs](tree.hs)
 ## Algebraic Expressions
 [algExpr.hs](algExpr.hs)
+## Stack Machine
+[stackMachine.hs](stackMachine.hs) - Not Working
