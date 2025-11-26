@@ -38,7 +38,7 @@ runCommand (Right (MachineState stack)) Div  =
     case stack of
         x:y:xs -> if x == 0 
                   then Left "Division by zero" 
-                  else Right $ MachineState ((y / x) : stack)
+                  else Right $ MachineState ((y / x) : xs)
         _ -> Left "Not enough operands for division"
 
 runCommand (Left error) _ = Left error
@@ -46,7 +46,7 @@ runCommand (Left error) _ = Left error
 binaryOp :: (Double -> Double -> Double) -> MachineState -> Either String MachineState
 binaryOp op (MachineState stack) = 
     case stack of
-        x:y:xs -> Right $ MachineState (op y x : stack)
+        x:y:xs -> Right $ MachineState (op y x : xs)
         _ -> Left "Not enough operands on stack"
 
 runProgram :: [MachineCommand] -> Either String MachineState -> Either String MachineState
